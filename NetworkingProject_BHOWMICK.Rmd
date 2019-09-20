@@ -1,0 +1,480 @@
+---
+title: "DS745_NetworkingProjectAnalysis_BHOWMICK"
+author: "Gautam"
+date: "November 8, 2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r, message=FALSE,echo=FALSE}
+library(statnet)
+library(UserNetR)
+library(igraph)
+library(intergraph)
+library(ergm)
+library(RColorBrewer)
+```
+
+
+```{r ,echo=FALSE}
+#See a summary of the network and attributes and density
+data(Facebook)
+is_directed(Facebook)
+class(Facebook)
+summary(Facebook)
+facebook.net <- asNetwork(Facebook)
+#density
+network.size(facebook.net)
+#Density
+gden(facebook.net)
+#Component
+components(Facebook)
+#A network diameter is the longest geodesic distance (length of the shortest path between two nodes)
+#in the network. In igraph, diameter() returns the distance, while get_diameter() returns the
+#nodes along the first found path of that distance.
+#A diameter of 4 suggests that this network is compact (Diameter)
+diameter(Facebook, directed=F, weights=NA)
+diameter(Facebook, directed=F)
+diam <- get_diameter(Facebook, directed=T)
+#Clustering Coeffients
+gtrans(facebook.net,mode="graph")
+#Connectivity
+is_connected(Facebook, mode="strong")
+is_connected(Facebook, mode="weak")
+```
+
+# Centrality & centralization
+
+```{r , echo=FALSE}
+# Closeness (centrality based on distance to others in the graph)
+closeness(Facebook, mode="all", weights=NA) 
+```
+
+```{r , echo=FALSE}
+# Betweenness (centrality based on a broker position connecting others)
+betweenness(Facebook, directed=T, weights=NA)
+```
+
+```{r , echo=FALSE}
+ #shows it is a network object
+list.vertex.attributes(Facebook)
+list.edge.attributes(Facebook)
+```
+
+```{r , echo=FALSE}
+#Extract data frames with node and edge info
+facebook.v.df<-as_data_frame(Facebook,what="vertices")
+facebook.e.df<-as_data_frame(Facebook,what="edges")
+```
+
+```{r , echo=FALSE}
+# Examine the data:
+nrow(facebook.e.df); 
+nrow(unique(facebook.e.df[,c("from", "to")]))
+length(unique(facebook.v.df$name))
+
+```
+
+
+```{r , echo=FALSE}
+# Write CSV files
+write.csv(facebook.v.df,file="facebook_V.csv",row.names = F) #Vertices
+write.csv(facebook.e.df,file="facebook_e.csv",row.names = F) #Edges
+```
+
+```{r , echo=FALSE}
+my_pal <- brewer.pal(8,"Dark2")
+rolelab <- get.vertex.attribute(Facebook,"group")
+rolecat <- as.factor(rolelab)
+op<-par(mar=rep(0,4))
+gplot(facebook.net, gmode="graph",
+      vertex.col=my_pal[rolecat],vertex.cex=2,
+      label.cex=0.6,label.pos=5,
+      displayisolates=FALSE)
+par(op)
+
+```
+
+```{r , echo=FALSE}
+# The graph is hard to interpret partly becuase of high density, as well as having some #edge widths being ticker
+my_pal <- brewer.pal(8,"Dark2")
+rolelab <- get.vertex.attribute(Facebook,"group")
+rolecat <- as.factor(rolelab)
+op<-par(mar=rep(0,4))
+gplot(facebook.net, gmode="graph",displaylabels=TRUE,
+      vertex.col=my_pal[rolecat],vertex.cex=2,
+      label.cex=0.6,label.pos=5,
+      displayisolates=FALSE)
+par(op)
+
+```
+
+
+```{r , echo=FALSE}
+# Filtered based on node attribute Sex of type 'Male' 
+facebook.net.male <- get.inducedSubgraph(facebook.net, which(facebook.net %v% "sex"=="male"))
+op<-par(mar=rep(0,4))
+gplot(facebook.net.male, gmode="graph",displaylabels=TRUE,
+      vertex.col="lightblue",vertex.cex=1.3,
+      label.cex=0.6,label.pos=5,
+      displayisolates=FALSE) 
+par(op)
+
+```
+
+```{r , echo=FALSE}
+# Filtered based on node attribute Sex of type 'Male' 
+facebook.net.female <- get.inducedSubgraph(facebook.net, which(facebook.net %v% "sex"=="female"))
+op<-par(mar=rep(0,4))
+gplot(facebook.net.female, gmode="graph",displaylabels=TRUE,
+      vertex.col="lightblue",vertex.cex=1.3,
+      label.cex=0.6,label.pos=5,
+      displayisolates=FALSE) 
+par(op)
+
+```
+
+```{r , echo=FALSE}
+# Generate node colors based on Group and and Legand
+rescale <- function(nchar,low,high) {
+  min_d <- min(nchar)
+  max_d <- max(nchar)
+  rscl <- ((high-low)*(nchar-min_d))/(max_d-min_d)+low
+}
+deg <- igraph::degree(Facebook, mode="all")
+op <- par(mar=c(0,0,0,0))
+plot(facebook.net,vertex.cex=rescale(deg,1,5),vertex.col=my_pal[rolecat])
+legend("bottomleft",legend=c("B", "C", "F", "G", "H", "M", "S","W"),col=my_pal,pch=19,pt.cex=1.5,bty="n")
+par(op)
+```
+
+```{r , echo=FALSE}
+# Generate node colors based on Group and Sex (Female)
+op <- par(mar=c(0,0,0,0))
+gplot(facebook.net.female,gmode="graph",usearrows=FALSE,vertex.cex=2,label=rolelab, displaylabels=T,vertex.col=my_pal[rolecat],label.cex=0.6,label.pos=5,displayisolates=FALSE)
+par(op)
+```
+
+```{r , echo=FALSE}
+# Generate edge colors based on  Group and Sex (Female)
+n_edge<-network.edgecount(facebook.net.female)
+edge_cat <-sample (1:8, n_edge,replace = T)
+op <- par(mar=c(0,0,0,0))
+gplot(facebook.net.female,gmode="graph",usearrows=FALSE,vertex.cex=2,label=rolelab,displaylabels=T,vertex.col=my_pal[rolecat],label.cex=0.6,label.pos=5,displayisolates=FALSE,edge.col = my_pal[rolecat],edge.lwd = 2)
+par(op)
+```
+
+```{r , echo=FALSE}
+# Generate node colors based on Group and Sex (Male)
+op <- par(mar=c(0,0,0,0))
+gplot(facebook.net.male,gmode="graph",usearrows=FALSE,vertex.cex=2,label=rolelab, displaylabels=T,vertex.col=my_pal[rolecat],label.cex=0.6,label.pos=5,displayisolates=FALSE)
+par(op)
+```
+
+```{r , echo=FALSE}
+# Generate edge colors based on  Group and Sex (Male)
+n_edge<-network.edgecount(facebook.net.male)
+edge_cat <-sample (1:8, n_edge,replace = T)
+op <- par(mar=c(0,0,0,0))
+gplot(facebook.net.male,gmode="graph",usearrows=FALSE,vertex.cex=2,label=rolelab,displaylabels=T,vertex.col=my_pal[rolecat],label.cex=0.6,label.pos=5,displayisolates=FALSE,edge.col = my_pal[rolecat],edge.lwd = 2)
+par(op)
+```
+
+```{r , echo=FALSE}
+# Sometimes, especially with semantic networks, we may be interested in 
+# plotting only the labels of the nodes:
+
+plot(Facebook, vertex.shape="none", vertex.label=V(Facebook)$name, 
+     vertex.label.font=2, vertex.label.color="gray40",
+     vertex.label.cex=.7, edge.color="black")
+```
+
+```{r , echo=FALSE}
+# By default, igraph uses a layout called layout_nicely which selects
+# an appropriate layout algorithm based on the properties of the graph. 
+
+layouts <- grep("^layout_", ls("package:igraph"), value=TRUE)[-1] 
+# Remove layouts that do not apply to our graph.
+layouts <- layouts[!grepl("bipartite|merge|norm|sugiyama|tree", layouts)]
+
+op <- par(mar=c(0,0,0,0))
+
+for (layout in layouts) {
+  print(layout)
+  l <- do.call(layout, list(Facebook)) 
+  plot(Facebook, gmode="graph",displaylabels=TRUE,vertex.cex=2,label.cex=0.6,label.pos=1,displayisolates=FALSE,edge.color="gray50",  
+       vertex.color=my_pal[rolecat],edge.arrow.mode=0, layout=l, main=layout) 
+  }
+par(op)
+```
+
+```{r , echo=FALSE}
+#At this point it might be useful to provide a quick reminder that there are many ways to represent
+#a network not limited to a hairball plot.
+#For example, here is a quick heatmap of the network matrix:
+iSimpm <- get.adjacency(Facebook,sparse=F)
+colnames(iSimpm) <- V(Facebook)$name
+rownames(iSimpm) <- V(Facebook)$name
+palf <- colorRampPalette(c("#669999", "#003333"))
+heatmap(iSimpm[,93:1], Rowv = NA, Colv = NA, col = palf(100),
+scale="none", margins=c(10,10) )
+```
+
+
+```{r , echo=FALSE}
+#A network diameter is the longest geodesic distance (length of the shortest path between two nodes)
+#in the network. In igraph, diameter() returns the distance, while get_diameter() returns the
+#nodes along the first found path of that distance.
+as.vector(diam)
+#Color nodes along the diameter:
+vcol <- rep("lightblue", vcount(Facebook))
+vcol[diam] <- "gold"
+ecol <- rep("gray20", ecount(Facebook))
+ecol[E(Facebook, path=diam)] <- "orange"
+# E(net, path=diam) finds edges along a path, here 'diam'
+op<-par(mar=rep(0,4))
+gplot(asNetwork(Facebook), gmode="graph",displaylabels=TRUE, vertex.col=vcol,vertex.cex=2,label.cex=0.6,label.pos=5,displayisolates=FALSE, edge.color=ecol, edge.arrow.mode=0)
+par(op)
+```
+
+```{r , echo=FALSE}
+#The function degree() has a mode of in for in-degree, out for out-degree, and all or total for total degree.
+# Node degrees
+# 'degree' has a mode of 'in' for in-degree, 'out' for out-degree,
+# and 'all' or 'total' for total degree. 
+deg.in <- igraph::degree(Facebook, mode="in")
+# Degree distribution
+deg.dist.in <- degree_distribution(Facebook, cumulative=T, mode="in")
+plot( x=0:max(deg.in), y=1-deg.dist.in, pch=19, cex=1.2, col="orange", 
+      xlab="In Degree", ylab="Cumulative Frequency")
+
+```
+
+
+```{r , echo=FALSE}
+#The function degree() has a mode of in for in-degree, out for out-degree, and all or total for total degree.
+# Node degrees
+# 'degree' has a mode of 'in' for in-degree, 'out' for out-degree,
+# and 'all' or 'total' for total degree. 
+
+deg.out <- igraph::degree(Facebook, mode="out")
+#plot(Facebook, vertex.color=vcol, edge.color=ecol, edge.arrow.mode=0,vertex.size=deg.out*3)
+# Degree distribution
+deg.dist.out <- degree_distribution(Facebook, cumulative=T, mode="out")
+plot( x=0:max(deg.out), y=1-deg.dist.out, pch=19, cex=1.2, col="orange", 
+      xlab="Out Degree", ylab="Cumulative Frequency")
+
+```
+
+```{r , echo=FALSE}
+#The function degree() has a mode of in for in-degree, out for out-degree, and all or total for total degree.
+# Node degrees
+# 'degree' has a mode of 'in' for in-degree, 'out' for out-degree,
+# and 'all' or 'total' for total degree. 
+deg.all <- igraph::degree(Facebook, mode="all")
+#plot(Facebook, vertex.color=vcol, edge.color=ecol, edge.arrow.mode=0,vertex.size=deg.all*3)
+# Degree distribution
+deg.dist.all <- degree_distribution(Facebook, cumulative=T, mode="all")
+plot( x=0:max(deg.all), y=1-deg.dist.all, pch=19, cex=1.2, col="orange", 
+      xlab="Degree", ylab="Cumulative Frequency")
+```
+
+# ================ 8. Subgroups and communities ================
+
+```{r , echo=FALSE}
+#Gautam
+facebook.sym <- as.undirected(Facebook, mode="collapse")
+#Gautam
+class(facebook.sym)
+```
+
+#  ------->> Cliques --------
+
+```{r , echo=FALSE}
+ # Find cliques (complete subgraphs of an undirected graph)
+vcol <- rep("grey80", vcount(facebook.sym))
+vcol[unlist(largest_cliques(facebook.sym))] <- "gold"
+
+plot(asNetwork(facebook.sym),gmode="graph",usearrows=FALSE,vertex.cex=2,label=V(facebook.sym)$name,displaylabels=T,vertex.col=vcol,label.cex=0.6,label.pos=5,displayisolates=FALSE,edge.col = "grey80",edge.lwd = 2)
+```
+#  ------->> Communities --------
+
+```{r , echo=FALSE}
+
+# Community detection based on edge betweenness (Newman-Girvan)
+# High-betweenness edges are removed sequentially (recalculating at each step)
+# and the best partitioning of the network is selected.
+ceb <- cluster_edge_betweenness(Facebook) 
+V(Facebook)$label.cex <- 0.6
+plot(ceb, Facebook) 
+
+# Let's examine the community detection igraph object:
+class(ceb)
+length(ceb)     # number of communities
+membership(ceb) # community membership for each node
+modularity(ceb) # how modular the graph partitioning is
+```
+
+```{r , echo=FALSE}
+
+# Community detection based on greedy optimization of modularity
+cfg <- cluster_fast_greedy(as.undirected(Facebook))
+membership(cfg) # community membership for each node
+modularity(cfg) # how modular the graph partitioning
+plot(cfg, as.undirected(Facebook))
+ 
+```
+
+```{r , echo=FALSE}
+
+# Community detection based on propagating labels
+# Assigns node labels, randomizes, and replaces each vertex's label with
+# the label that appears most frequently among neighbors. Repeated until
+# each vertex has the most common label of its neighbors.
+clp <- cluster_label_prop(Facebook)
+membership(clp) # community membership for each node
+modularity(clp) # how modular the graph partitioning
+plot(clp, Facebook)
+
+```
+
+
+```{r , echo=FALSE}
+
+#cluster leading eigen
+cle = cluster_leading_eigen(Facebook)
+membership(cle) # community membership for each node
+modularity(cle) # how modular the graph partitioning
+plot(cle, Facebook)
+
+```
+
+```{r , echo=FALSE}
+
+#cluster louvain
+cl = cluster_louvain(Facebook)
+membership(cl) # community membership for each node
+modularity(cl) # how modular the graph partitioning
+plot(cl, Facebook)
+
+```
+
+```{r , echo=FALSE}
+
+# cluster optimal
+
+co = cluster_optimal(Facebook)
+membership(co) # community membership for each node
+modularity(co) # how modular the graph partitioning
+plot(co, Facebook)
+
+```
+
+```{r , echo=FALSE}
+
+# Community detection based on propagating labels
+# Assigns node labels, randomizes, and replaces each vertex's label with
+# the label that appears most frequently among neighbors. Repeated until
+# each vertex has the most common label of its neighbors.
+ 
+# We can also plot the communities without relying on their built-in plot:
+V(Facebook)$community <- cfg$membership
+colrs <- adjustcolor(my_pal, alpha=.6)
+plot(Facebook, vertex.color=colrs[V(Facebook)$community])
+ 
+```
+
+# K-core decomposition
+
+```{r , echo=FALSE}
+# The k-core is the maximal subgraph in which every node has degree of at least k
+# This also means that the (k+1)-core will be a subgraph of the k-core.
+# The result here gives the coreness of each vertex in the network.
+kc <- coreness(Facebook, mode="all")
+plot(Facebook, vertex.size=kc*6, vertex.label=kc, vertex.color=colrs)
+ 
+```
+
+
+```{r , echo=FALSE}
+#Estimating the Facebook network null model
+model.1 <- ergm( facebook.net ~ edges,control=control.ergm(seed=40) )
+class(model.1)
+summary(model.1)
+plogis(coef(model.1))
+```
+
+```{r , echo=FALSE}
+#Estimating the Facebook network null model
+model.2 <- ergm(facebook.net ~ edges + nodefactor('sex'),control=control.ergm(seed=40))
+class(model.2)
+summary(model.2 )
+plogis(coef(model.2))
+```
+
+```{r , echo=FALSE}
+#Estimating the Facebook network null model
+model.3 <- ergm(facebook.net ~ edges + nodefactor('group') +nodefactor('sex') ,control=control.ergm(seed=40))
+class(model.3)
+summary(model.3 )
+plogis(coef(model.3))
+
+```
+
+```{r , echo=FALSE}
+
+#Visualizing how well null model captures overall
+#network characteristics (such as triangles)
+
+model.1.sim <-simulate( model.1, nsim = 100, monitor=~triangles, statsonly=TRUE,control=control.simulate.ergm(MCMC.burnin=1000, MCMC.interval=1000), seed=40)
+
+facebook.net.tri <- summary( facebook.net~triangle )
+
+par( mar = c( 4,4,1,1 ), cex.main = .9, cex.lab =.9,cex.axis = .75 ) 
+hist(model.1.sim[,2], xlim=c(0,100),col='gray', main="", xlab="Number of triangles",ylab="Number of simulations") 
+points(facebook.net.tri,3, pch="X",cex=2)
+
+```
+
+```{r , echo=FALSE}
+#Comparison of model fit for simulated networks from each model
+
+model.1.sim <- simulate(model.1, verbose = TRUE, seed = 5)
+model.2.sim <- simulate(model.2, verbose = TRUE, seed = 5)
+model.3.sim <- simulate(model.3, verbose = TRUE, seed = 5)
+```
+
+
+```{r , echo=FALSE}
+#Comparison of model fit for simulated networks from each model
+
+rowgof <- rbind(summary(facebook.net ~ edges + degree(0:5) +triangle),
+                summary(model.1.sim ~ edges + degree(0:5) + triangle),
+                summary(model.3.sim ~ edges + degree(0:5) + triangle),
+                summary(model.2.sim ~ edges + degree(0:5) + triangle))
+rownames(rowgof) <- c("Facebok", "Null", "Model(I)", "Model(II)")
+rowgof
+```
+
+```{r , echo=FALSE}
+
+#Goodness-of-fit simulations for the diffhomophily2 model
+set.seed(567)
+model.3.gof <- gof( model.3, GOF = ~degree + espartners + dspartners, verbose = T, burnin = 10000, interval = 10000 )
+model.3.gof
+
+#Graphic goodness-of-fit for the diffhomophily2 network
+par( mfrow = c( 2,3 ) )
+plot(model.3.gof, cex.lab = 1.5, cex.axis = 1.5 )
+plot(model.3.gof, cex.lab = 1.5, cex.axis = 1.5, plotlogodds = T )
+
+```
